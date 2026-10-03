@@ -2,7 +2,6 @@ package com.ridvanosma.yazboz.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -14,12 +13,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -97,7 +94,6 @@ fun ScoreboardScreen(
     val leaderTotal = resultTotals.minOrNull() ?: 0L
     val differences = resultTotals.map { total -> total - leaderTotal }
 
-    val horizontalScrollState = rememberScrollState()
 
     Scaffold(
         topBar = {
@@ -173,30 +169,27 @@ fun ScoreboardScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            val firstColumnWidth = 78.dp
-            val scoreColumnWidth = if (game.participantCount == 2) {
-                ((maxWidth - firstColumnWidth) / 2f).coerceAtLeast(116.dp)
-            } else {
-                78.dp
+            // Ekran genişliğine göre tüm sütunları otomatik ölçekle.
+            // Böylece tablette boş alan kalmaz, telefonda yatay kaydırma gerekmez.
+            val firstColumnWidth = when {
+                maxWidth < 360.dp -> 58.dp
+                maxWidth < 420.dp -> 66.dp
+                maxWidth < 600.dp -> 76.dp
+                else -> 92.dp
             }
 
-            val minimumTableWidth =
-                firstColumnWidth + (scoreColumnWidth * game.participantCount)
-
-            val tableWidth = if (minimumTableWidth > maxWidth) {
-                minimumTableWidth
+            val scoreColumnWidth = if (game.participantCount > 0) {
+                (maxWidth - firstColumnWidth) / game.participantCount.toFloat()
             } else {
                 maxWidth
             }
 
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .horizontalScroll(horizontalScrollState)
+                modifier = Modifier.fillMaxSize()
             ) {
                 Column(
                     modifier = Modifier
-                        .requiredWidth(tableWidth)
+                        .fillMaxWidth()
                         .fillMaxHeight()
                 ) {
                     TableHeader(
@@ -465,12 +458,16 @@ private fun TableHeader(
                         Box(
                             modifier = Modifier
                                 .width(scoreColumnWidth)
-                                .padding(horizontal = 4.dp),
+                                .padding(horizontal = if (scoreColumnWidth < 72.dp) 1.dp else 4.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = name,
-                                style = MaterialTheme.typography.labelLarge,
+                                style = if (scoreColumnWidth < 72.dp) {
+                                    MaterialTheme.typography.labelMedium
+                                } else {
+                                    MaterialTheme.typography.labelLarge
+                                },
                                 fontWeight = FontWeight.SemiBold,
                                 textAlign = TextAlign.Center,
                                 maxLines = 2,
@@ -507,7 +504,11 @@ private fun TableHeader(
                     ) {
                         Text(
                             text = name,
-                            style = MaterialTheme.typography.titleSmall,
+                            style = if (scoreColumnWidth < 72.dp) {
+                                MaterialTheme.typography.labelMedium
+                            } else {
+                                MaterialTheme.typography.titleSmall
+                            },
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center,
                             maxLines = 2,
@@ -541,8 +542,7 @@ private fun HandBlock(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(66.dp)
-                .padding(horizontal = 2.dp),
+                .height(if (scoreColumnWidth < 72.dp) 60.dp else 66.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
@@ -559,7 +559,11 @@ private fun HandBlock(
                 ) {
                     Text(
                         text = "${hand.handNumber}. EL",
-                        style = MaterialTheme.typography.labelLarge,
+                        style = if (scoreColumnWidth < 72.dp) {
+                            MaterialTheme.typography.labelMedium
+                        } else {
+                            MaterialTheme.typography.labelLarge
+                        },
                         fontWeight = FontWeight.Bold
                     )
 
@@ -585,6 +589,7 @@ private fun HandBlock(
                     modifier = Modifier.width(scoreColumnWidth),
                     value = value,
                     backgroundColor = palette.hand,
+                    compact = scoreColumnWidth < 72.dp,
                     onClick = {
                         onEditHandScore(participantIndex, value)
                     }
@@ -596,8 +601,7 @@ private fun HandBlock(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(58.dp)
-                    .padding(horizontal = 2.dp),
+                    .height(if (scoreColumnWidth < 72.dp) 54.dp else 58.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
@@ -639,6 +643,7 @@ private fun HandBlock(
                         value = value,
                         backgroundColor = palette.penalty,
                         isPenalty = true,
+                        compact = scoreColumnWidth < 72.dp,
                         onClick = {
                             onEditPenaltyScore(
                                 penaltyIndex,
@@ -659,6 +664,7 @@ private fun ScoreCell(
     value: String,
     backgroundColor: Color,
     isPenalty: Boolean = false,
+    compact: Boolean = false,
     onClick: () -> Unit
 ) {
     val isNegative = value.toLongOrNull()?.let { it < 0 } == true
@@ -666,7 +672,10 @@ private fun ScoreCell(
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .padding(horizontal = 3.dp, vertical = 5.dp)
+            .padding(
+                horizontal = if (compact) 1.dp else 3.dp,
+                vertical = if (compact) 4.dp else 5.dp
+            )
     ) {
         Surface(
             modifier = Modifier
@@ -685,10 +694,10 @@ private fun ScoreCell(
             ) {
                 Text(
                     text = value.ifBlank { "—" },
-                    style = if (isPenalty) {
-                        MaterialTheme.typography.titleSmall
-                    } else {
-                        MaterialTheme.typography.titleMedium
+                    style = when {
+                        compact -> MaterialTheme.typography.titleSmall
+                        isPenalty -> MaterialTheme.typography.titleSmall
+                        else -> MaterialTheme.typography.titleMedium
                     },
                     fontWeight = FontWeight.SemiBold,
                     color = if (isNegative) {
@@ -742,7 +751,11 @@ private fun TotalRow(
                 ) {
                     Text(
                         text = total.toString(),
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = if (scoreColumnWidth < 72.dp) {
+                            MaterialTheme.typography.titleMedium
+                        } else {
+                            MaterialTheme.typography.headlineSmall
+                        },
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center
                     )
@@ -790,7 +803,11 @@ private fun PlayerTotalRow(
                 ) {
                     Text(
                         text = total.toString(),
-                        style = MaterialTheme.typography.titleMedium,
+                        style = if (scoreColumnWidth < 72.dp) {
+                            MaterialTheme.typography.titleSmall
+                        } else {
+                            MaterialTheme.typography.titleMedium
+                        },
                         fontWeight = FontWeight.SemiBold,
                         textAlign = TextAlign.Center
                     )
@@ -836,7 +853,11 @@ private fun TeamTotalRow(
                 ) {
                     Text(
                         text = total.toString(),
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = if (scoreColumnWidth < 72.dp) {
+                            MaterialTheme.typography.titleMedium
+                        } else {
+                            MaterialTheme.typography.headlineSmall
+                        },
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center
                     )
@@ -886,7 +907,11 @@ private fun TeamDifferenceRow(
                         } else {
                             "+$difference"
                         },
-                        style = MaterialTheme.typography.titleMedium,
+                        style = if (scoreColumnWidth < 72.dp) {
+                            MaterialTheme.typography.titleSmall
+                        } else {
+                            MaterialTheme.typography.titleMedium
+                        },
                         fontWeight = FontWeight.Bold,
                         color = if (difference == 0L) {
                             MaterialTheme.colorScheme.primary
@@ -941,7 +966,11 @@ private fun DifferenceRow(
                         } else {
                             "+$difference"
                         },
-                        style = MaterialTheme.typography.titleMedium,
+                        style = if (scoreColumnWidth < 72.dp) {
+                            MaterialTheme.typography.titleSmall
+                        } else {
+                            MaterialTheme.typography.titleMedium
+                        },
                         fontWeight = FontWeight.Bold,
                         color = if (difference == 0L) {
                             MaterialTheme.colorScheme.primary

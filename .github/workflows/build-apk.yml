@@ -1,0 +1,56 @@
+name: Yazboz APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Kodu al
+        uses: actions/checkout@v4
+
+      - name: Java kur
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Gradle izinleri
+        run: chmod +x gradlew
+
+      - name: Keystore hazirla
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.YAZBOZ_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.YAZBOZ_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.YAZBOZ_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.YAZBOZ_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/Yazboz.jks"
+          cat > keystore.properties <<EOF
+          storeFile=$RUNNER_TEMP/Yazboz.jks
+          storePassword=$STORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
+      - name: Release APK olustur
+        run: ./gradlew assembleRelease
+
+      - name: APK adini Yazboz.apk yap
+        run: cp app/build/outputs/apk/release/app-release.apk Yazboz.apk
+
+      - name: APK yukle
+        uses: actions/upload-artifact@v4
+        with:
+          name: Yazboz-apk
+          path: Yazboz.apk
+          if-no-files-found: error

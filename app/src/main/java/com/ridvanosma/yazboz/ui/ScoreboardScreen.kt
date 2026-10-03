@@ -54,6 +54,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.ridvanosma.yazboz.data.GameState
 import com.ridvanosma.yazboz.data.HandEntry
 import com.ridvanosma.yazboz.data.PenaltyEntry
@@ -571,14 +572,17 @@ private fun HandBlock(
                         onClick = onAddPenalty
                     ) {
                         Icon(
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(14.dp),
                             imageVector = Icons.Rounded.Add,
                             contentDescription = null
                         )
-                        Spacer(Modifier.width(2.dp))
+                        Spacer(Modifier.width(1.dp))
                         Text(
                             text = "Ceza",
-                            style = MaterialTheme.typography.labelSmall
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 9.sp
+                            ),
+                            maxLines = 1
                         )
                     }
                 }
